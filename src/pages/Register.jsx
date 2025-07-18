@@ -29,11 +29,11 @@ function Register() {
 
       if (error) throw error;
 
-      // Insert ke tabel profiles jika user sudah terdaftar
+      // Upsert ke tabel profiles agar tidak error duplicate key
       if (data.user) {
-        await supabase
+        const { error: upsertError } = await supabase
           .from('profiles')
-          .insert([
+          .upsert([
             {
               id: data.user.id, // id user Supabase (uuid)
               email: email,
@@ -41,6 +41,10 @@ function Register() {
               role: 'user'
             }
           ]);
+        if (upsertError) {
+          setError('Registrasi berhasil, tapi gagal menyimpan profil: ' + upsertError.message);
+          return;
+        }
       }
 
       alert('Registrasi berhasil! Silakan login.');
