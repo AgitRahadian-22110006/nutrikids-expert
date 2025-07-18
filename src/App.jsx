@@ -130,7 +130,7 @@ export default function App() {
                 href="/diagnosis-forward"
                 className="block bg-green-500 hover:bg-rose-600 text-white font-semibold px-8 py-3 rounded-lg shadow-lg transition"
               >
-                Diagnosis Forward Chaining
+                Diagnosis Forward Chaining.
               </a>
               <a
                 href="/diagnosis-backward"
