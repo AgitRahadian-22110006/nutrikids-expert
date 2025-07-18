@@ -315,11 +315,11 @@ function DiagnosisForward() {
         {/* Deskripsi sistem pakar - versi profesional & keren */}
         <div className="mt-16 bg-gradient-to-b from-white to-emerald-50 p-8 rounded-xl shadow-md border border-emerald-200">
           <h2 className="text-2xl md:text-3xl font-bold text-emerald-700 mb-6 text-center">
-            🧠 Tentang Sistem Pakar <span className="text-emerald-600">NutriKids Experti</span>
+            🧠 Tentang Sistem Pakar <span className="text-emerald-600">NutriKids Expert</span>
           </h2>
 
           <p className="text-gray-700 text-base leading-relaxed mb-6 text-justify">
-            <strong>NutriKids Experti</strong> adalah sebuah <strong>sistem pakar gizi anak berbasis web</strong> yang dirancang untuk membantu orang tua dan tenaga medis mendiagnosis status gizi balita secara cepat dan akurat. Sistem ini menggunakan pendekatan <strong>kecerdasan buatan (AI)</strong> melalui <strong>metode inferensi Forward Chaining</strong>, dan seluruh acuan diagnosa merujuk pada <strong>standar WHO (World Health Organization)</strong>.
+            <strong>NutriKids Expert</strong> adalah sebuah <strong>sistem pakar gizi anak berbasis web</strong> yang dirancang untuk membantu orang tua dan tenaga medis mendiagnosis status gizi balita secara cepat dan akurat. Sistem ini menggunakan pendekatan <strong>kecerdasan buatan (AI)</strong> melalui <strong>metode inferensi Forward Chaining</strong>, dan seluruh acuan diagnosa merujuk pada <strong>standar WHO (World Health Organization)</strong>.
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm md:text-base text-gray-700">
