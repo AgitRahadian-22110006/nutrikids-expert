@@ -29,6 +29,20 @@ function Register() {
 
       if (error) throw error;
 
+      // Insert ke tabel profiles jika user sudah terdaftar
+      if (data.user) {
+        await supabase
+          .from('profiles')
+          .insert([
+            {
+              id: data.user.id, // id user Supabase (uuid)
+              email: email,
+              full_name: fullName,
+              role: 'user'
+            }
+          ]);
+      }
+
       alert('Registrasi berhasil! Silakan login.');
       navigate('/login');
     } catch (error) {
