@@ -9,7 +9,10 @@ import Register from './pages/Register.jsx';
 import DiagnosisForward from './pages/DiagnosisForward.jsx';
 import History from './pages/History.jsx';
 
-import AdminDashboard from './pages/admin/AdminDashboard.jsx';
+// src/main.jsx
+import AdminDashboard from './pages/admin/AdminDashboard.jsx'; // ✅
+
+
 import AdminUserList from './pages/admin/AdminUserList.jsx';
 import AdminDiagnosisDetail from './pages/admin/AdminDiagnosisDetail.jsx';
 import AdminDiagnosisList from './pages/admin/AdminDiagnosisList';
@@ -31,11 +34,11 @@ root.render(
         <Route path="/history" element={<History />} />
 
         {/* Admin area */}
-        <Route path="/admin-dashboard" element={<AdminDashboard />} />
         <Route path="/admin-users" element={<AdminUserList />} />
         <Route path="/admin/diagnosis/:id" element={<AdminDiagnosisDetail />} />
        <Route path="/admin/diagnosis" element={<AdminDiagnosisList />} />
        <Route path="/admin/user/:id" element={<AdminUserDetail />} />
+       <Route path="/admin-dashboard" element={<AdminDashboard />} />
        
 
         {/* ↑ Pastikan path ini sama dengan URL yang kamu navigasikan */}
