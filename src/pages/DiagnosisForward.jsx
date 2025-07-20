@@ -5,6 +5,7 @@ import { calculateZScore, categorizeHAZ, categorizeWHZ } from '../utils/calculat
 import { forwardChaining, explainRuleTrace } from '../utils/forwardChaining';
 import { supabase } from '../utils/supabaseClient';
 import { FaArrowLeft, FaDownload } from 'react-icons/fa';
+import { saveDiagnosis } from '../services/diagnosisService';
 import {
   ResponsiveContainer,
   LineChart,
@@ -15,7 +16,6 @@ import {
   Legend,
   CartesianGrid,
   ReferenceLine,
-  Label,
 } from 'recharts';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -49,7 +49,7 @@ function DiagnosisForward() {
     setForm({ ...form, [name]: value });
   };
 
-  const handleSubmit = e => {
+  const handleSubmit = async e => {
     e.preventDefault();
     const { parentName, childName, ageMonths, gender, weight, height } = form;
 
@@ -101,6 +101,29 @@ function DiagnosisForward() {
       });
 
       setTrace(explanation);
+
+      // Simpan record diagnosa
+      const { data: { user }, error: userErr } = await supabase.auth.getUser ();
+      if (userErr) throw userErr;
+
+      await saveDiagnosis({
+        user_id: user.id,
+        parent_name: parentName,
+        child_name: childName,
+        age_months: age,
+        gender,
+        weight_kg: weightKg,
+        height_cm: heightCm,
+        haz_z: hazZ,
+        whz_z: whzZ,
+        haz_category: hazCategory,
+        whz_category: whzCategory,
+        diagnosis: diagnosisResult.diagnosis,
+        recommendation: diagnosisResult.recommendation,
+        rule_id: diagnosisResult.ruleId
+      });
+      console.log('Diagnosa tersimpan ke riwayat.');
+
     } catch (err) {
       alert('Terjadi kesalahan: ' + err.message);
     }
@@ -108,91 +131,87 @@ function DiagnosisForward() {
 
   // Siapkan data grafik HAZ
   const prepareHAZData = () => {
-    const ref = whoReference.hazLookup[form.gender];
+    const ref = whoReference.hazLookup[form.gender] || {};
     return Object.entries(ref).map(([age, { L, M, S }]) => {
-      const data = { age: Number(age) };
+      const d = { age: Number(age) };
       for (let z of [-3, -2, -1, 0, 1, 2, 3]) {
-        data[`sd${z}`] = L !== 0
+        d[`sd${z}`] = L
           ? parseFloat((M * Math.pow(1 + L * S * z, 1 / L)).toFixed(1))
           : parseFloat((M * Math.exp(S * z)).toFixed(1));
       }
-      if (result && Number(age) === result.age) {
-        data.child = result.height;
-      }
-      return data;
+      if (result && Number(age) === result.age) d.child = result.height;
+      return d;
     }).sort((a, b) => a.age - b.age);
   };
 
   // Siapkan data grafik WHZ
   const prepareWHZData = () => {
-    const ref = whoReference.whzLookup[form.gender];
+    const ref = whoReference.whzLookup[form.gender] || {};
     return Object.entries(ref).map(([h, { L, M, S }]) => {
-      const data = { height: Number(h) };
+      const d = { height: Number(h) };
       for (let z of [-3, -2, -1, 0, 1, 2, 3]) {
-        data[`sd${z}`] = L !== 0
+        d[`sd${z}`] = L
           ? parseFloat((M * Math.pow(1 + L * S * z, 1 / L)).toFixed(1))
           : parseFloat((M * Math.exp(S * z)).toFixed(1));
       }
-      if (result && Number(h).toFixed(1) === result.height.toFixed(1)) {
-        data.child = result.weight;
-      }
-      return data;
+      if (result && Number(h).toFixed(1) === result.height.toFixed(1)) d.child = result.weight;
+      return d;
     }).sort((a, b) => a.height - b.height);
   };
 
   const handleDownloadPDF = async () => {
-  try {
-    if (!hasilRef.current) {
-      alert('Hasil diagnosa belum tersedia!');
-      return;
+    try {
+      if (!hasilRef.current) {
+        alert('Hasil diagnosa belum tersedia!');
+        return;
+      }
+
+      const element = hasilRef.current;
+
+      const canvas = await html2canvas(element, {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: "#f0fdf4"
+      });
+
+      const imgData = canvas.toDataURL('image/jpeg', 1.0);
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgProps = pdf.getImageProperties(imgData);
+
+      // Hitung ukuran gambar agar tinggi pas dengan halaman
+      const pdfHeight = pageHeight;
+      const pdfWidth = (imgProps.width * pdfHeight) / imgProps.height;
+
+      const x = (pageWidth - pdfWidth) / 2; // agar center
+      const y = 0;
+
+      pdf.addImage(
+        imgData,
+        'JPEG',
+        x,
+        y,
+        pdfWidth,
+        pdfHeight,
+        undefined,
+        'FAST'
+      );
+
+      pdf.save(
+        `NutriKids_Expert_Hasil_Diagnosa_${result?.childName?.replace(/\s+/g, '_') || 'Anak'}.pdf`
+      );
+
+    } catch (err) {
+      alert('Gagal membuat PDF: ' + err.message);
+      console.error('PDF Error:', err);
     }
-
-    const element = hasilRef.current;
-
-    const canvas = await html2canvas(element, {
-      scale: 3,
-      useCORS: true,
-      backgroundColor: "#f0fdf4"
-    });
-
-    const imgData = canvas.toDataURL('image/jpeg', 1.0);
-    const pdf = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4'
-    });
-
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const imgProps = pdf.getImageProperties(imgData);
-
-    // Hitung ukuran gambar agar tinggi pas dengan halaman
-    const pdfHeight = pageHeight;
-    const pdfWidth = (imgProps.width * pdfHeight) / imgProps.height;
-
-    const x = (pageWidth - pdfWidth) / 2; // agar center
-    const y = 0;
-
-    pdf.addImage(
-      imgData,
-      'JPEG',
-      x,
-      y,
-      pdfWidth,
-      pdfHeight,
-      undefined,
-      'FAST'
-    );
-
-    pdf.save(
-      `NutriKids_Expert_Hasil_Diagnosa_${result?.childName?.replace(/\s+/g, '_') || 'Anak'}.pdf`
-    );
-
-  } catch (err) {
-    alert('Gagal membuat PDF: ' + err.message);
-    console.error('PDF Error:', err);
-  }
-};
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 px-2 py-4 sm:px-4 sm:py-8">
@@ -207,13 +226,13 @@ function DiagnosisForward() {
         <form onSubmit={handleSubmit} className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2">
           <input type="text" name="parentName" placeholder="Nama Orang Tua" value={form.parentName} onChange={handleChange} required className="p-2 border border-emerald-300 rounded-md focus:ring text-sm" />
           <input type="text" name="childName" placeholder="Nama Anak" value={form.childName} onChange={handleChange} required className="p-2 border border-emerald-300 rounded-md text-sm" />
-          <input type="number" name="ageMonths" placeholder="Usia (bulan)" value={form.ageMonths} onChange={handleChange} required className="p-2 border border-emerald-300 rounded-md text-sm" />
+          <input type="number" name="ageMonths" placeholder="Usia (0 - 60 bulan)" value={form.ageMonths} onChange={handleChange} required className="p-2 border border-emerald-300 rounded-md text-sm" />
           <select name="gender" value={form.gender} onChange={handleChange} className="p-2 border border-emerald-300 rounded-md text-sm">
             <option value="male">Laki-laki</option>
             <option value="female">Perempuan</option>
           </select>
           <input type="number" name="weight" step="0.1" placeholder="Berat Badan (kg)" value={form.weight} onChange={handleChange} required className="p-2 border border-emerald-300 rounded-md text-sm" />
-          <input type="number" name="height" step="0.1" placeholder="Tinggi Badan (cm)" value={form.height} onChange={handleChange} required className="p-2 border border-emerald-300 rounded-md text-sm" />
+          <input type="number" name="height" step="0.1" placeholder="Tinggi Badan (45 - 120 cm) sesuai usia" value={form.height} onChange={handleChange} required className="p-2 border border-emerald-300 rounded-md text-sm" />
           <div className="sm:col-span-2 flex flex-col sm:flex-row justify-between items-center mt-2 gap-2">
             <a href="/" className="text-emerald-600 hover:underline flex items-center space-x-1 text-sm">
               <FaArrowLeft /> <span>Kembali ke Beranda</span>
@@ -275,7 +294,8 @@ function DiagnosisForward() {
                     Diagnosis: {result.diagnosis}
                   </p>
                   <ul style={{ marginLeft: "20px", fontSize: "0.95rem" }}>
-                    {result.recommendation.map((r, i) => (
+                    {/* Tambahkan safe‑guard di sini */}
+                    {(result.recommendation ?? []).map((r, i) => (
                       <li key={i}>{r}</li>
                     ))}
                   </ul>
@@ -301,18 +321,25 @@ function DiagnosisForward() {
                   overflow: "hidden"
                 }}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={prepareHAZData()}>
+                    <LineChart data={prepareHAZData() || []}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="age" label={{ value: 'Usia (bulan)', position: 'insideBottom', offset: -5, fontSize: 10 }} fontSize={10} />
-                      <YAxis label={{ value: 'Tinggi (cm)', angle: -90, position: 'insideLeft', fontSize: 10 }} fontSize={10} />
+                      <XAxis
+                        dataKey="age"
+                        label={{ value: 'Usia (bulan)', position: 'insideBottom', offset: -5, fontSize: 10 }}
+                        fontSize={10}
+                      />
+                      <YAxis
+                        label={{ value: 'Tinggi (cm)', angle: -90, position: 'insideLeft', fontSize: 10 }}
+                        fontSize={10}
+                      />
                       <Tooltip />
-                      <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: 10 }}/>
-                      {[-3,-2,-1,0,1,2,3].map(z => (
+                      <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: 10 }} />
+                      {[-3, -2, -1, 0, 1, 2, 3].map(z => (
                         <Line
                           key={z}
                           dataKey={`sd${z}`}
-                          stroke={z===0?'#2d6a4f':'#74c69d'}
-                          strokeWidth={z===0?3:1}
+                          stroke={z === 0 ? '#2d6a4f' : '#74c69d'}
+                          strokeWidth={z === 0 ? 3 : 1}
                           dot={false}
                           name={`SD ${z}`}
                         />
@@ -324,26 +351,28 @@ function DiagnosisForward() {
                         strokeWidth={4}
                         dot={{ r: 5, fill: '#1b4332' }}
                         name="Anak Anda"
-                        label={result ? {
-                          position: "top",
-                          value: `Z: ${result.hazZ} (${result.hazCategory})`,
-                          fill: "#1b4332",
-                          fontSize: 10,
-                        } : undefined}
+                        label={
+                          result
+                            ? {
+                                position: 'top',
+                                value: `Z: ${result.hazZ.toFixed(2)} (${result.hazCategory})`,
+                                fill: '#1b4332',
+                                fontSize: 10,
+                              }
+                            : undefined
+                        }
                       />
                       {result && (
                         <ReferenceLine
                           x={result.age}
                           stroke="#1b4332"
                           strokeDasharray="4 4"
-                          label={
-                            <Label
-                              value={`Usia: ${result.age} bln`}
-                              position="top"
-                              fill="#1b4332"
-                              fontSize={10}
-                            />
-                          }
+                          label={{
+                            value: `Usia: ${result.age} bln`,
+                            position: 'top',
+                            fill: '#1b4332',
+                            fontSize: 10,
+                          }}
                         />
                       )}
                     </LineChart>
@@ -367,18 +396,25 @@ function DiagnosisForward() {
                   overflow: "hidden"
                 }}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={prepareWHZData()}>
+                    <LineChart data={prepareWHZData() || []}>
                       <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="height" label={{ value: 'Tinggi (cm)', position: 'insideBottom', offset: -5, fontSize: 10 }} fontSize={10} />
-                      <YAxis label={{ value: 'Berat (kg)', angle: -90, position: 'insideLeft', fontSize: 10 }} fontSize={10} />
+                      <XAxis
+                        dataKey="height"
+                        label={{ value: 'Tinggi (cm)', position: 'insideBottom', offset: -5, fontSize: 10 }}
+                        fontSize={10}
+                      />
+                      <YAxis
+                        label={{ value: 'Berat (kg)', angle: -90, position: 'insideLeft', fontSize: 10 }}
+                        fontSize={10}
+                      />
                       <Tooltip />
-                      <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: 10 }}/>
-                      {[-3,-2,-1,0,1,2,3].map(z => (
+                      <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: 10 }} />
+                        {[-3, -2, -1, 0, 1, 2, 3].map(z => (
                         <Line
                           key={z}
                           dataKey={`sd${z}`}
-                          stroke={z===0?'#1b4332':'#40916c'}
-                          strokeWidth={z===0?3:1}
+                          stroke={z === 0 ? '#1b4332' : '#40916c'}
+                          strokeWidth={z === 0 ? 3 : 1}
                           dot={false}
                           name={`SD ${z}`}
                         />
@@ -390,26 +426,28 @@ function DiagnosisForward() {
                         strokeWidth={4}
                         dot={{ r: 5, fill: '#081c15' }}
                         name="Anak Anda"
-                        label={result ? {
-                          position: "top",
-                          value: `Z: ${result.whzZ} (${result.whzCategory})`,
-                          fill: "#081c15",
-                          fontSize: 10,
-                        } : undefined}
+                        label={
+                          result
+                            ? {
+                                position: 'top',
+                                value: `Z: ${result.whzZ.toFixed(2)} (${result.whzCategory})`,
+                                fill: '#081c15',
+                                fontSize: 10,
+                              }
+                            : undefined
+                        }
                       />
                       {result && (
                         <ReferenceLine
-                          x={parseFloat(result.height)}
+                          x={parseFloat(result.height.toFixed(1))}
                           stroke="#081c15"
                           strokeDasharray="4 4"
-                          label={
-                            <Label
-                              value={`Tinggi: ${result.height} cm`}
-                              position="top"
-                              fill="#081c15"
-                              fontSize={10}
-                            />
-                          }
+                          label={{
+                            value: `Tinggi: ${result.height} cm`,
+                            position: 'top',
+                            fill: '#081c15',
+                            fontSize: 10,
+                          }}
                         />
                       )}
                     </LineChart>
@@ -417,7 +455,7 @@ function DiagnosisForward() {
                 </div>
               </div>
 
-              {/* Jejak inferensi pindah ke bawah */}
+              {/* Jejak inferensi */}
               <details style={{ marginTop: "32px", fontSize: "0.95rem" }}>
                 <summary style={{ color: "#059669", cursor: "pointer" }}>Lihat jejak inferensi</summary>
                 <pre style={{
@@ -434,7 +472,7 @@ function DiagnosisForward() {
           </>
         )}
 
-        {/* Deskripsi sistem pakar - versi mobile friendly */}
+        {/* Deskripsi sistem pakar */}
         <section className="mt-10 sm:mt-16 bg-gradient-to-b from-white to-emerald-50 p-3 sm:p-8 rounded-xl shadow-md border border-emerald-200">
           <h2 className="text-lg sm:text-2xl md:text-3xl font-bold text-emerald-700 mb-3 sm:mb-6 text-center">
             🧠 Tentang Sistem Pakar <span className="text-emerald-600">NutriKids Expert</span>
@@ -450,6 +488,7 @@ function DiagnosisForward() {
                 Forward Chaining merupakan metode penalaran berbasis fakta → aturan → kesimpulan. Sistem akan menganalisis data awal (usia, berat, tinggi, dan jenis kelamin) dan menghitung <strong>Z-score HAZ & WHZ</strong>. Hasil ini kemudian digunakan untuk menelusuri basis pengetahuan dan menemukan <strong>diagnosa yang sesuai</strong> berdasarkan aturan pakar.
               </p>
             </div>
+            
             {/* Box 2 - Input */}
             <div className="bg-emerald-100 rounded-lg p-3 sm:p-4 shadow-sm flex flex-col h-full">
               <h4 className="text-emerald-700 font-semibold text-base sm:text-lg mb-1">📝 Data yang Diperlukan</h4>
@@ -461,6 +500,7 @@ function DiagnosisForward() {
                 <li>Tinggi badan (cm)</li>
               </ul>
             </div>
+            
             {/* Box 3 - Output */}
             <div className="bg-emerald-100 rounded-lg p-3 sm:p-4 shadow-sm flex flex-col h-full">
               <h4 className="text-emerald-700 font-semibold text-base sm:text-lg mb-1">📈 Hasil Diagnosa</h4>
@@ -473,20 +513,39 @@ function DiagnosisForward() {
                 <li>Visualisasi grafik HAZ & WHZ</li>
               </ul>
             </div>
+            
             {/* Box 4 - Klasifikasi */}
             <div className="bg-emerald-100 rounded-lg p-3 sm:p-4 shadow-sm flex flex-col h-full">
               <h4 className="text-emerald-700 font-semibold text-base sm:text-lg mb-1">🔍 Kategori Status Gizi Anak (WHO)</h4>
               <p className="mb-1">Kategori status gizi anak yang digunakan pada sistem ini:</p>
               <ul className="list-disc list-inside space-y-1">
+                <li>Stunting Berat / Gizi Buruk Akut</li>
+                <li>Stunting Berat / Gizi Buruk</li>
+                <li>Stunting Berat / Risiko Kurus</li>
                 <li>Stunting Berat</li>
+                <li>Stunting Berat / Risiko BB Lebih</li>
+                <li>Stunting Berat / BB Lebih</li>
+                <li>Stunting Berat / Obesitas</li>
+                <li>Stunting Sedang / Gizi Buruk Akut</li>
+                <li>Stunting Sedang / Gizi Buruk</li>
+                <li>Stunting Sedang / Risiko Kurus</li>
                 <li>Stunting Sedang</li>
+                <li>Stunting Sedang / Risiko BB Lebih</li>
+                <li>Stunting Sedang / BB Lebih</li>
+                <li>Stunting Sedang / Obesitas</li>
+                <li>Risiko Stunting / Gizi Buruk Akut</li>
+                <li>Risiko Stunting / Gizi Buruk</li>
+                <li>Risiko Stunting / Risiko Kurus</li>
                 <li>Risiko Stunting</li>
-                <li>Normal</li>
-                <li>Gizi Buruk Akut (Kurus Berat)</li>
-                <li>Gizi Buruk (Kurus Sedang)</li>
-                <li>Risiko Kurus</li>
-                <li>Risiko Berat Badan Lebih</li>
-                <li>Berat Badan Lebih</li>
+                <li>Risiko Stunting / Risiko BB Lebih</li>
+                <li>Risiko Stunting / BB Lebih</li>
+                <li>Risiko Stunting / Obesitas</li>
+                <li>Gizi Buruk Akut</li>
+                <li>Underweight</li>
+                <li>Risiko Underweight</li>
+                <li>Gizi Normal</li>
+                <li>Risiko BB Lebih</li>
+                <li>BB Lebih</li>
                 <li>Obesitas</li>
               </ul>
               <div className="mt-2 text-xs text-gray-500">
@@ -497,6 +556,7 @@ function DiagnosisForward() {
               </div>
             </div>
           </div>
+          
           {/* Penutup */}
           <div className="mt-5 sm:mt-8 text-xs sm:text-sm text-gray-600 border-t pt-3 sm:pt-4">
             ⚠️ <strong>Disclaimer:</strong> NutriKids Expert bukan pengganti konsultasi langsung dengan dokter atau ahli gizi. Sistem ini hanya memberikan <strong>diagnosa awal berbasis data WHO</strong> dan <strong>aturan pakar</strong> sebagai alat bantu edukatif.

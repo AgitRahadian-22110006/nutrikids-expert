@@ -1,0 +1,79 @@
+// src/utils/pdfUtils.js
+// ====================================
+// Utility untuk generate PDF dari data diagnosa
+// Menggunakan html2canvas + jsPDF
+// ====================================
+
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+
+/**
+ * Generate dan download PDF untuk record diagnosa
+ * @param {Object} rec - Object record diagnosa
+ * @param {string} rec.parent_name
+ * @param {string} rec.child_name
+ * @param {number} rec.age_months
+ * @param {string} rec.gender
+ * @param {number} rec.weight_kg
+ * @param {number} rec.height_cm
+ * @param {number} rec.haz_z
+ * @param {number} rec.whz_z
+ * @param {string} rec.haz_category
+ * @param {string} rec.whz_category
+ * @param {string} rec.diagnosis
+ * @param {Array<string>} rec.recommendation
+ * @param {number} rec.rule_id
+ * @param {string} rec.created_at
+ */
+export async function handleDownloadPDF(rec) {
+  // Buat elemen container tersembunyi
+  const container = document.createElement('div');
+  container.style.position = 'fixed';
+  container.style.top = '-10000px';
+  container.style.left = '-10000px';
+  container.style.width = '800px';
+  container.style.background = '#f0fdf4';
+  container.style.padding = '24px';
+  container.style.border = '1px solid #bbf7d0';
+  container.style.borderRadius = '12px';
+  container.style.fontFamily = 'Arial, sans-serif';
+  
+  // Isi konten HTML
+  container.innerHTML = `
+    <h2 style="color:#047857; font-weight:600; font-size:1.25rem; margin-bottom:1rem;">Hasil Diagnosa</h2>
+    <p><strong>Tanggal:</strong> ${new Date(rec.created_at).toLocaleString('id-ID')}</p>
+    <p><strong>Nama Orang Tua:</strong> ${rec.parent_name}</p>
+    <p><strong>Nama Anak:</strong> ${rec.child_name}</p>
+    <p><strong>Usia:</strong> ${rec.age_months} bulan</p>
+    <p><strong>Jenis Kelamin:</strong> ${rec.gender === 'male' ? 'Laki-laki' : 'Perempuan'}</p>
+    <p><strong>Berat Badan:</strong> ${rec.weight_kg} kg</p>
+    <p><strong>Tinggi Badan:</strong> ${rec.height_cm} cm</p>
+    <p><strong>Z-Score HAZ:</strong> ${rec.haz_z.toFixed(2)} → <strong>${rec.haz_category}</strong></p>
+    <p><strong>Z-Score WHZ:</strong> ${rec.whz_z.toFixed(2)} → <strong>${rec.whz_category}</strong></p>
+    <p style="font-weight:bold; color:#047857; margin-top:1rem;">Diagnosis: ${rec.diagnosis}</p>
+    <ul style="margin-left:20px; font-size:0.95rem;">
+      ${rec.recommendation.map(item => `<li>${item}</li>`).join('')}
+    </ul>
+    <p style="font-size:0.8rem; color:#9ca3af;">Rule ID: ${rec.rule_id}</p>
+  `;
+
+  document.body.appendChild(container);
+
+  try {
+    const canvas = await html2canvas(container, { scale: 3, useCORS: true, backgroundColor: '#f0fdf4' });
+    const imgData = canvas.toDataURL('image/jpeg', 1.0);
+    const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const imgProps = pdf.getImageProperties(imgData);
+    const pdfHeight = pageHeight;
+    const pdfWidth = (imgProps.width * pdfHeight) / imgProps.height;
+    const x = (pageWidth - pdfWidth) / 2;
+    
+    pdf.addImage(imgData, 'JPEG', x, 0, pdfWidth, pdfHeight, undefined, 'FAST');
+    pdf.save(`Riwayat_Diagnosa_${rec.child_name.replace(/\s+/g, '_')}.pdf`);
+  } finally {
+    // Hapus elemen container setelah selesai
+    document.body.removeChild(container);
+  }
+}

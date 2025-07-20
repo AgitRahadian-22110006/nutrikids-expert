@@ -36,6 +36,7 @@ const whzLookup = {
  * @returns {{L:number, M:number, S:number}}
  */
 export function getHAZReference(ageMonths, gender) {
+  console.log(`Mencari HAZ reference untuk umur ${ageMonths} bulan dan gender ${gender}`);
   const ref = hazLookup[gender]?.[ageMonths];
   if (!ref) throw new Error(`HAZ reference tidak ditemukan untuk umur ${ageMonths} bulan dan gender ${gender}`);
   return ref;
@@ -48,6 +49,7 @@ export function getHAZReference(ageMonths, gender) {
  * @returns {{L:number, M:number, S:number}}
  */
 export function getWFAReference(ageMonths, gender) {
+  console.log(`Mencari WFA reference untuk umur ${ageMonths} bulan dan gender ${gender}`);
   const ref = wfaLookup[gender]?.[ageMonths];
   if (!ref) throw new Error(`WFA reference tidak ditemukan untuk umur ${ageMonths} bulan dan gender ${gender}`);
   return ref;
@@ -61,6 +63,7 @@ export function getWFAReference(ageMonths, gender) {
  */
 export function getWHZReference(heightCm, gender) {
   const key = parseFloat(heightCm.toFixed(1));
+  console.log(`Mencari WHZ reference untuk tinggi ${key} cm dan gender ${gender}`);
   const ref = whzLookup[gender]?.[key];
   if (!ref) throw new Error(`WHZ reference tidak ditemukan untuk tinggi ${key} cm dan gender ${gender}`);
   return ref;

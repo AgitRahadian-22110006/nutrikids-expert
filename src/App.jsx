@@ -28,7 +28,6 @@ export default function App() {
     };
     getUser();
 
-    // Tambahkan listener untuk sync state user
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (_event, session) => {
         setUser(session?.user || null);
@@ -45,7 +44,7 @@ export default function App() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    setUser(null); // Jangan redirect, biarkan tampilan berubah
+    setUser(null);
   };
 
   return (
@@ -57,6 +56,14 @@ export default function App() {
             <h1 className="text-2xl font-bold text-white">NutriKids‑Expert</h1>
           </div>
           <nav className="hidden md:flex space-x-6 items-center">
+            {user && (
+              <a
+                href="/history"
+                className="text-white hover:underline"
+              >
+                Riwayat Diagnosa
+              </a>
+            )}
             {["Beranda", "Fitur", "Tentang"].map((item) => (
               <a
                 key={item}
@@ -83,6 +90,14 @@ export default function App() {
         </div>
         {menuOpen && (
           <div className="md:hidden px-6 pb-4 flex flex-col space-y-2 bg-rose-500">
+            {user && (
+              <a
+                href="/history"
+                className="text-white hover:underline"
+              >
+                Riwayat Diagnosa
+              </a>
+            )}
             {["Beranda", "Fitur", "Tentang"].map((item) => (
               <a
                 key={item}
@@ -132,12 +147,6 @@ export default function App() {
               >
                 Diagnosis Forward Chaining.
               </a>
-              <a
-                href="/diagnosis-backward"
-                className="block bg-blue-400 hover:bg-rose-500 text-white font-semibold px-8 py-3 rounded-lg shadow-lg transition"
-              >
-                Diagnosis Backward Chaining
-              </a>
             </div>
           ) : (
             <a
@@ -165,7 +174,7 @@ export default function App() {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8 text-left">
             {[
               {
-                icon: <FaHeartbeat />,
+                icon: <FaHeartbeat />, 
                 title: "Akurat & Berdasarkan WHO",
                 desc: "Menggunakan standar Z-Score WHO untuk hasil yang valid dan terpercaya.",
               },
