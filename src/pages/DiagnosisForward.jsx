@@ -54,7 +54,7 @@ function DiagnosisForward() {
     const { parentName, childName, ageMonths, gender, weight, height } = form;
 
     if (!parentName || !childName || !ageMonths || !weight || !height) {
-      alert('Semua kolom harus diisi.');
+      console.error('Semua kolom harus diisi.');
       return;
     }
 
@@ -63,16 +63,16 @@ function DiagnosisForward() {
     const weightKg = parseFloat(weight);
 
     if (age <= 0 || heightCm <= 0 || weightKg <= 0) {
-      alert('Usia, tinggi, dan berat harus lebih dari 0.');
+      console.error('Usia, tinggi, dan berat harus lebih dari 0.');
       return;
     }
 
     try {
       const hazRef = getHAZReference(age, gender);
-      const whzRef = getWHZReference(parseFloat(heightCm.toFixed(1)), gender);
+      const whzRef = getWHZReference(heightCm, gender);
 
       if (!hazRef || !whzRef) {
-        alert('Data referensi WHO tidak ditemukan untuk usia/tinggi/gender tersebut.');
+        console.error('Data referensi WHO tidak ditemukan untuk usia/tinggi/gender tersebut.');
         return;
       }
 
@@ -125,7 +125,7 @@ function DiagnosisForward() {
       console.log('Diagnosa tersimpan ke riwayat.');
 
     } catch (err) {
-      alert('Terjadi kesalahan: ' + err.message);
+      console.error('Terjadi kesalahan:', err.message);
     }
   };
 
@@ -161,7 +161,7 @@ function DiagnosisForward() {
 
   const handleDownloadPDF = async () => {
     try {
-      if (!hasilRef.current) {
+      if (!hasilRef.current || !result) {
         alert('Hasil diagnosa belum tersedia!');
         return;
       }
@@ -204,7 +204,7 @@ function DiagnosisForward() {
       );
 
       pdf.save(
-        `NutriKids_Expert_Hasil_Diagnosa_${result?.childName?.replace(/\s+/g, '_') || 'Anak'}.pdf`
+        `NutriKids_Expert_Hasil_Diagnosa_${result.childName.replace(/\s+/g, '_') || 'Anak'}.pdf`
       );
 
     } catch (err) {
@@ -294,7 +294,6 @@ function DiagnosisForward() {
                     Diagnosis: {result.diagnosis}
                   </p>
                   <ul style={{ marginLeft: "20px", fontSize: "0.95rem" }}>
-                    {/* Tambahkan safe‑guard di sini */}
                     {(result.recommendation ?? []).map((r, i) => (
                       <li key={i}>{r}</li>
                     ))}
@@ -403,13 +402,19 @@ function DiagnosisForward() {
                         label={{ value: 'Tinggi (cm)', position: 'insideBottom', offset: -5, fontSize: 10 }}
                         fontSize={10}
                       />
+                                            <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis
+                        dataKey="height"
+                        label={{ value: 'Tinggi (cm)', position: 'insideBottom', offset: -5, fontSize: 10 }}
+                        fontSize={10}
+                      />
                       <YAxis
                         label={{ value: 'Berat (kg)', angle: -90, position: 'insideLeft', fontSize: 10 }}
                         fontSize={10}
                       />
                       <Tooltip />
                       <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: 10 }} />
-                        {[-3, -2, -1, 0, 1, 2, 3].map(z => (
+                      {[-3, -2, -1, 0, 1, 2, 3].map(z => (
                         <Line
                           key={z}
                           dataKey={`sd${z}`}
@@ -499,61 +504,6 @@ function DiagnosisForward() {
                 <li>Berat badan (kg)</li>
                 <li>Tinggi badan (cm)</li>
               </ul>
-            </div>
-            
-            {/* Box 3 - Output */}
-            <div className="bg-emerald-100 rounded-lg p-3 sm:p-4 shadow-sm flex flex-col h-full">
-              <h4 className="text-emerald-700 font-semibold text-base sm:text-lg mb-1">📈 Hasil Diagnosa</h4>
-              <ul className="list-disc list-inside space-y-1">
-                <li>Nilai Z-score HAZ (Height-for-Age)</li>
-                <li>Nilai Z-score WHZ (Weight-for-Height)</li>
-                <li>Kategori status gizi menurut WHO</li>
-                <li>Diagnosis & rekomendasi</li>
-                <li>Jejak aturan (rule tracing)</li>
-                <li>Visualisasi grafik HAZ & WHZ</li>
-              </ul>
-            </div>
-            
-            {/* Box 4 - Klasifikasi */}
-            <div className="bg-emerald-100 rounded-lg p-3 sm:p-4 shadow-sm flex flex-col h-full">
-              <h4 className="text-emerald-700 font-semibold text-base sm:text-lg mb-1">🔍 Kategori Status Gizi Anak (WHO)</h4>
-              <p className="mb-1">Kategori status gizi anak yang digunakan pada sistem ini:</p>
-              <ul className="list-disc list-inside space-y-1">
-                <li>Stunting Berat / Gizi Buruk Akut</li>
-                <li>Stunting Berat / Gizi Buruk</li>
-                <li>Stunting Berat / Risiko Kurus</li>
-                <li>Stunting Berat</li>
-                <li>Stunting Berat / Risiko BB Lebih</li>
-                <li>Stunting Berat / BB Lebih</li>
-                <li>Stunting Berat / Obesitas</li>
-                <li>Stunting Sedang / Gizi Buruk Akut</li>
-                <li>Stunting Sedang / Gizi Buruk</li>
-                <li>Stunting Sedang / Risiko Kurus</li>
-                <li>Stunting Sedang</li>
-                <li>Stunting Sedang / Risiko BB Lebih</li>
-                <li>Stunting Sedang / BB Lebih</li>
-                <li>Stunting Sedang / Obesitas</li>
-                <li>Risiko Stunting / Gizi Buruk Akut</li>
-                <li>Risiko Stunting / Gizi Buruk</li>
-                <li>Risiko Stunting / Risiko Kurus</li>
-                <li>Risiko Stunting</li>
-                <li>Risiko Stunting / Risiko BB Lebih</li>
-                <li>Risiko Stunting / BB Lebih</li>
-                <li>Risiko Stunting / Obesitas</li>
-                <li>Gizi Buruk Akut</li>
-                <li>Underweight</li>
-                <li>Risiko Underweight</li>
-                <li>Gizi Normal</li>
-                <li>Risiko BB Lebih</li>
-                <li>BB Lebih</li>
-                <li>Obesitas</li>
-              </ul>
-              <div className="mt-2 text-xs text-gray-500">
-                <span className="block">Keterangan:</span>
-                <span className="block">HAZ = Height-for-Age Z-score</span>
-                <span className="block">WHZ = Weight-for-Height Z-score</span>
-                <span className="block">Kategori diambil dari kombinasi HAZ & WHZ sesuai standar WHO dan basis aturan NutriKids Expert.</span>
-              </div>
             </div>
           </div>
           

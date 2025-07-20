@@ -18,14 +18,14 @@ export default function MiniHAZChart({ age, height, gender }) {
       return { name: `SD${z}`, value: parseFloat(sdValue.toFixed(1)) };
     });
     // Titik anak
-    points.push({ name: 'Anak', value: height });
+    points.push({ name: 'Anak', value: parseFloat(height.toFixed(1)) });
     return points;
   }, [age, height, gender]);
 
   if (data.length === 0) {
     return (
       <div role="img" aria-label="Data tidak tersedia" className="text-xs text-gray-400">
-        No data
+        Data tidak tersedia
       </div>
     );
   }
@@ -38,7 +38,7 @@ export default function MiniHAZChart({ age, height, gender }) {
           <YAxis hide domain={['dataMin', 'dataMax']} />
           <Tooltip
             wrapperStyle={{ fontSize: '10px' }}
-            formatter={(value, name) => [value, name]}
+            formatter={(value, name) => [`${value} cm`, name]}
           />
           <Line
             type="monotone"
@@ -50,7 +50,9 @@ export default function MiniHAZChart({ age, height, gender }) {
           />
         </LineChart>
       </ResponsiveContainer>
-      <figcaption className="sr-only">Grafik Mini HAZ untuk usia {age} bulan</figcaption>
+      <figcaption className="sr-only">
+        Grafik Mini HAZ untuk usia {age} bulan
+      </figcaption>
     </figure>
   );
 }
